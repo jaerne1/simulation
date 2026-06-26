@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNA De-escalation Simulation — Signature Healthcare</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #003b71;
+      --amber: #ff9e18;
+      --navy-light: #004f99;
+      --bg: #f4f6f9;
+      --white: #ffffff;
+      --text: #1a1a1a;
+      --muted: #5a6478;
+      --border: #d0d7e2;
+      --success: #1a6e3c;
+      --warning: #7a4200;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--white);
+      box-shadow: 0 0 24px rgba(0,0,0,0.08);
+    }
+
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      background: var(--amber);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--navy);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+    .header-text p { font-size: 12px; opacity: 0.75; margin-top: 1px; }
+
+    #scenario-banner {
+      background: #e8edf5;
+      border-left: 4px solid var(--amber);
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--navy);
+      line-height: 1.45;
+      flex-shrink: 0;
+    }
+
+    #scenario-banner strong { font-weight: 700; }
+
+    #transcript-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+
+    #transcript {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg {
+      max-width: 80%;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .msg-cna { align-self: flex-start; background: #e8edf5; border-bottom-left-radius: 3px; }
+    .msg-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .msg-cna .msg-label { color: var(--navy); }
+    .msg-learner { align-self: flex-end; background: var(--navy); color: var(--white); border-bottom-right-radius: 3px; }
+    .msg-learner .msg-label { color: var(--amber); }
+
+    #typing-indicator {
+      align-self: flex-start;
+      background: #e8edf5;
+      border-radius: 10px;
+      border-bottom-left-radius: 3px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      display: none;
+    }
+
+    #typing-indicator.visible { display: block; }
+    .dot-pulse { display: inline-block; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    #input-area {
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+      background: var(--white);
+    }
+
+    #user-input {
+      flex: 1;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      overflow-y: auto;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s;
+    }
+
+    #user-input:focus { outline: none; border-color: var(--navy); }
+    #user-input:disabled { background: #f0f0f0; color: var(--muted); }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+      white-space: nowrap;
+      height: 44px;
+      display: flex;
+      align-items: center;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #send-btn { background: var(--navy); color: var(--white); }
+    #send-btn:hover:not(:disabled) { background: var(--navy-light); }
+    #end-btn { background: transparent; color: var(--navy); border: 1.5px solid var(--navy); font-size: 13px; padding: 10px 14px; }
+    #end-btn:hover:not(:disabled) { background: #e8edf5; }
+
+    #analyzing-screen {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      color: var(--navy);
+    }
+
+    #analyzing-screen.visible { display: flex; }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #debrief-screen {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #debrief-screen.visible { display: flex; }
+
+    .debrief-section {
+      background: #f4f6f9;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .debrief-section h2 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    #verdict-badge {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 24px;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .verdict-success { background: #d4edda; color: var(--success); }
+    .verdict-needs-work { background: #fff3cd; color: var(--warning); }
+
+    .trajectory-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+    .bar-track {
+      background: var(--border);
+      border-radius: 4px;
+      height: 12px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .bar-start, .bar-end {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 2px solid var(--white);
+    }
+
+    .bar-line {
+      position: absolute;
+      top: 50%;
+      height: 12px;
+      transform: translateY(-50%);
+      border-radius: 4px;
+      background: var(--navy);
+      opacity: 0.35;
+    }
+
+    .behavior-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .behavior-item:last-child { border-bottom: none; }
+
+    .behavior-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .icon-hit { background: #d4edda; color: var(--success); }
+    .icon-miss { background: #ffe4e4; color: #b00020; }
+    .behavior-text strong { display: block; font-size: 14px; font-weight: 700; color: var(--navy); }
+    .behavior-text span { font-size: 13px; color: var(--muted); }
+
+    .adjustment-box { border-left: 4px solid var(--amber); padding-left: 12px; font-size: 14px; color: var(--text); }
+
+    .walkout-box {
+      border-left: 4px solid #c0392b;
+      font-size: 14px;
+      color: #7a0000;
+      background: #fff0f0;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 12px;
+    }
+
+    #chat-screen { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    #chat-screen.hidden { display: none; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" role="main">
+    <header>
+      <div class="logo-mark" aria-hidden="true">SH</div>
+      <div class="header-text">
+        <h1>Charge Nurse De-escalation Simulation</h1>
+        <p>Signature Healthcare — Staff Training</p>
+      </div>
+    </header>
+
+    <div id="chat-screen">
+      <div id="scenario-banner" role="note">
+        <strong>Scenario:</strong> A CNA just had a heated confrontation with a resident's family member over a missed call light. The family member has stepped away. You are the charge nurse who just arrived. <strong>Type your response below.</strong>
+      </div>
+
+      <div id="transcript-wrapper">
+        <div
+          id="transcript"
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation transcript"
+          aria-relevant="additions"
+        ></div>
+        <div id="typing-indicator" aria-live="polite" aria-atomic="true">
+          <span class="dot-pulse">CNA is typing…</span>
+        </div>
+      </div>
+
+      <div id="input-area">
+        <label for="user-input" class="sr-only">Your response as charge nurse</label>
+        <textarea
+          id="user-input"
+          placeholder="Type your response as the charge nurse…"
+          rows="1"
+          aria-label="Your response"
+        ></textarea>
+        <button id="send-btn" class="btn" aria-label="Send message">Send</button>
+        <button id="end-btn" class="btn" aria-label="End conversation and get debrief">End Conversation</button>
+      </div>
+    </div>
+
+    <div id="analyzing-screen" role="status" aria-live="polite" aria-label="Analyzing conversation">
+      <div class="spinner" aria-hidden="true"></div>
+      <p style="font-size:15px; color:var(--navy); font-weight:600;">Analyzing the conversation…</p>
+    </div>
+
+    <div id="debrief-screen" aria-label="Session debrief results">
+    </div>
+  </div>
+
+  <script>
+    let conversationHistory = [];
+    let transcript = [];
+    let intensityLog = [];
+
+    const transcriptEl = document.getElementById("transcript");
+    const typingEl = document.getElementById("typing-indicator");
+    const inputEl = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const endBtn = document.getElementById("end-btn");
+    const chatScreen = document.getElementById("chat-screen");
+    const analyzingScreen = document.getElementById("analyzing-screen");
+    const debriefScreen = document.getElementById("debrief-screen");
+
+    async function init() {
+      setInputEnabled(false);
+      typingEl.classList.add("visible");
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: [] }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        addToHistory("assistant", data.reply);
+        appendMessage("cna", data.reply);
+        if (data.intensity !== null) intensityLog.push(data.intensity);
+        transcript.push({ role: "CNA", text: data.reply });
+      } catch (e) {
+        appendMessage("cna", "[Connection error — please refresh and try again.]");
+      } finally {
+        typingEl.classList.remove("visible");
+        setInputEnabled(true);
+        inputEl.focus();
+      }
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      inputEl.value = "";
+      autoResizeInput();
+      setInputEnabled(false);
+      addToHistory("user", text);
+      appendMessage("learner", text);
+      transcript.push({ role: "Learner", text });
+      typingEl.classList.add("visible");
+      scrollToBottom();
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: conversationHistory }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        addToHistory("assistant", data.reply);
+        appendMessage("cna", data.reply);
+        if (data.intensity !== null) intensityLog.push(data.intensity);
+        transcript.push({ role: "CNA", text: data.reply });
+      } catch (e) {
+        appendMessage("cna", "[Connection error — unable to get a response.]");
+      } finally {
+        typingEl.classList.remove("visible");
+        setInputEnabled(true);
+        inputEl.focus();
+        scrollToBottom();
+      }
+    }
+
+    async function endSession() {
+      if (transcript.length === 0) return;
+      chatScreen.classList.add("hidden");
+      analyzingScreen.classList.add("visible");
+      try {
+        const res = await fetch("/debrief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript, intensityLog }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        renderDebrief(data);
+      } catch (e) {
+        renderDebriefError();
+      } finally {
+        analyzingScreen.classList.remove("visible");
+        debriefScreen.classList.add("visible");
+      }
+    }
+
+    function renderDebrief(d) {
+      const isSuccess = d.verdict === "Success";
+      const startPct = Math.round((d.intensity_start / 100) * 100);
+      const endPct = Math.round((d.intensity_end / 100) * 100);
+      const lineLeft = Math.min(startPct, endPct);
+      const lineWidth = Math.abs(startPct - endPct);
+      const startColor = intensityColor(d.intensity_start);
+      const endColor = intensityColor(d.intensity_end);
+
+      const behaviorsHTML = d.behaviors.map(b => `
+        <div class="behavior-item">
+          <div class="behavior-icon ${b.hit ? "icon-hit" : "icon-miss"}" aria-label="${b.hit ? "Hit" : "Missed"}">
+            ${b.hit ? "✓" : "✗"}
+          </div>
+          <div class="behavior-text">
+            <strong>${escHtml(b.behavior)}</strong>
+            <span>${escHtml(b.reason)}</span>
+          </div>
+        </div>
+      `).join("");
+
+      const walkoutHTML = d.walkout_warning ? `
+        <div class="debrief-section">
+          <h2>Realistic Consequence</h2>
+          <div class="walkout-box" role="alert">${escHtml(d.walkout_warning)}</div>
+        </div>
+      ` : "";
+
+      debriefScreen.innerHTML = `
+        <div class="debrief-section">
+          <h2>Outcome</h2>
+          <div id="verdict-badge" class="${isSuccess ? "verdict-success" : "verdict-needs-work"}"
+               role="status">${escHtml(d.verdict)}</div>
+          <p style="font-size:14px; color:var(--muted);">${escHtml(d.trajectory_summary)}</p>
+        </div>
+
+        <div class="debrief-section">
+          <h2>Emotional Intensity Trajectory</h2>
+          <div class="trajectory-labels">
+            <span>Start: ${d.intensity_start}</span>
+            <span>End: ${d.intensity_end}</span>
+          </div>
+          <div class="bar-track" role="img" aria-label="Intensity from ${d.intensity_start} to ${d.intensity_end} out of 100">
+            <div class="bar-line" style="left:${lineLeft}%; width:${lineWidth}%;"></div>
+            <div class="bar-start" style="left:${startPct}%; background:${startColor};" title="Start: ${d.intensity_start}"></div>
+            <div class="bar-end" style="left:${endPct}%; background:${endColor};" title="End: ${d.intensity_end}"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px;">
+            <span>0 — Calm</span><span>100 — Most Combative</span>
+          </div>
+        </div>
+
+        <div class="debrief-section">
+          <h2>Communication Behaviors</h2>
+          ${behaviorsHTML}
+        </div>
+
+        <div class="debrief-section">
+          <h2>One Adjustment for Next Time</h2>
+          <div class="adjustment-box">${escHtml(d.one_adjustment)}</div>
+        </div>
+
+        ${walkoutHTML}
+      `;
+    }
+
+    function renderDebriefError() {
+      debriefScreen.innerHTML = `
+        <div class="debrief-section">
+          <p style="color:#b00020; font-size:14px;">Unable to generate debrief. Please try again or contact your administrator.</p>
+        </div>
+      `;
+    }
+
+    function addToHistory(role, content) { conversationHistory.push({ role, content }); }
+
+    function appendMessage(who, text) {
+      const wrap = document.createElement("div");
+      wrap.className = `msg msg-${who === "cna" ? "cna" : "learner"}`;
+      const label = document.createElement("div");
+      label.className = "msg-label";
+      label.textContent = who === "cna" ? "CNA" : "You";
+      const body = document.createElement("div");
+      body.textContent = text;
+      wrap.appendChild(label);
+      wrap.appendChild(body);
+      transcriptEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      const wrapper = document.getElementById("transcript-wrapper");
+      wrapper.scrollTop = wrapper.scrollHeight;
+    }
+
+    function setInputEnabled(enabled) {
+      inputEl.disabled = !enabled;
+      sendBtn.disabled = !enabled;
+      endBtn.disabled = !enabled;
+    }
+
+    function autoResizeInput() {
+      inputEl.style.height = "auto";
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+    }
+
+    function intensityColor(n) {
+      if (n >= 70) return "#c0392b";
+      if (n >= 40) return "#e67e22";
+      return "#27ae60";
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    inputEl.addEventListener("input", autoResizeInput);
+
+    endBtn.addEventListener("click", () => {
+      if (transcript.length === 0) return;
+      endSession();
+    });
+
+    init();
+  </script>
+</body>
+</html>
