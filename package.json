@@ -1,0 +1,15 @@
+{
+  "name": "signature-cna-sim",
+  "version": "1.0.0",
+  "description": "Signature Healthcare CNA De-escalation Simulation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "@anthropic-ai/sdk": "^0.29.0"
+  }
+}
